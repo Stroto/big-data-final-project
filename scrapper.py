@@ -49,6 +49,14 @@ def getSongLinks(res):
                     
     return year_to_url
 
+def cleanSongArtistsTexts(artists_text):
+    "Seperates artists into a tuple. Assumes first artist is primary artist and the rest are featuring artists"
+    
+    artists = re.split(r'\s*[,&)] | \s*Featuring\s* | \s*X\s*', artists_text)
+    
+    return tuple(artists)
+    
+
 def getSongList(res, year):
     "Gets songs and billboard rank from year-end html page"
     
@@ -59,8 +67,14 @@ def getSongList(res, year):
     for section in song_list_sections:
         for song in section.find_all("div", class_ = "ye-chart-item__primary-row"):
             song_name = song.find("div", class_ = "ye-chart-item__title").text.strip()
+            song_name = re.sub("\s*\((.)*\)\s*", "", song_name)
             song_rank = int(song.find("div", class_ = "ye-chart-item__rank" ).text.strip())
-            yield (song_name, song_rank, year)
+            song_artists = song.find("div", class_ = "ye-chart-item__artist" ).text.strip()
+            
+            # Seperate artists if there are multiple artists in the song
+            # Assumes that the first artist is the primary artists and the rest are featuring
+            song_artists = cleanSongArtistsTexts(song_artists)
+            yield (song_name, song_artists, song_rank, year)
     
 
 def getSongListYears(links: dict, start_year: int, end_year = None):
@@ -79,7 +93,7 @@ def getSongListYears(links: dict, start_year: int, end_year = None):
         
 
         for song in getSongList(res, year):
-            song_list.append((song[0], song[1], song[2]))
+            song_list.append((song[0], song[1], song[2], song[3]))
 
             
     return song_list
@@ -95,14 +109,17 @@ def getSongs(url, start_year, end_year = None):
     return song_list
 
 def main():
-    
+   
     billboard_url = "https://www.billboard.com/charts/year-end/2019/hot-100-songs"
     res = getResponseSoup(billboard_url)
     
     
     song_List_links = getSongLinks(res)
     
-    getSongListYears(song_List_links, 2006, 2019)
+    for song in getSongListYears(song_List_links, 2019):
+        print(f"Song: {song[0]}, Artists: {song[1]}, Rank: {song[2]}, Year: {song[3]}")
+
+    
 
 if __name__ == "__main__":
     main()
