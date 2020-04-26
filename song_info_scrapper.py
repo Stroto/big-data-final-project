@@ -9,6 +9,8 @@ import scrapper
 import requests
 from bs4 import element
 import re
+import numpy as np
+from collections import defaultdict
 
 CLIENT_ACCESS_TOKEN = 'x7D_HFMdSpFStJddZOmfavjW8ExkdNZnzABkCQGM7zyv7yWAPmdVS8iV1LgsK1VW'
 
@@ -47,7 +49,7 @@ def getSongInfo(song: tuple, i):
                 
                 producers, view_count = getProducers_and_ViewCount(song_api_path)
                 lyrics = scrapeLyrics(song_page)
-                popular_songs = getPopularSongs(artists[count])
+                # popular_songs = getPopularSongs(artists[count])
                 
                 print(f"COUNT: {i}\nSong: {song[0]}, Artists: {song[1]}, Rank: {song[2]}, Year: {song[3]}")
                 print(f"", producers, "\n--------")
@@ -122,11 +124,35 @@ def main():
     url = "https://www.billboard.com/charts/year-end/2019/hot-100-songs"
     
     song_list = scrapper.getSongs(url, 2019)
+    songs_with_metadata = []
     
+
+    
+    # Track songs, artists, and producers via set for ID Tagging:
+    songs_artists_producers = defaultdict(set)
+    
+    # Shape is number of songs by number of metadata (6): Artists, Producers, Genius View Count, Lyrics, Year
+    songs_matrix = np.zeros((len(song_list), 6))
+    columns = ["Artists", "Producers", "Genius ViewCount", "Lyrics", "Song Rank", "Year"]
     
     for i, song in enumerate(song_list):
+        song_name, song_artists, song_rank, year = song
         producers, lyrics, view_count = getSongInfo(song, i)
         
+        songs_artists_producers['songs'].add(song_name)
+
+        for artist in song_artists:
+            songs_artists_producers['artists'].add(artist)
+        for producer in producers:
+            songs_artists_producers['producers'].add(producer)
+        
+        songs_with_metadata.append((song_name, producers, view_count, lyrics, song_rank, year))
+    
+    # Sort the Song Names via songs_with_metadata
+    # Sort the Artists, and Producers
+    # Enumerate and make the index the ID Representation of the Song, replace artists and prducers w. IDS too
+    
+    
     
 if __name__ == "__main__":
     main()
