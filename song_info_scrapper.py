@@ -11,6 +11,8 @@ from bs4 import element
 import re
 import numpy as np
 from collections import defaultdict
+import operator
+import pandas as pd
 
 CLIENT_ACCESS_TOKEN = 'x7D_HFMdSpFStJddZOmfavjW8ExkdNZnzABkCQGM7zyv7yWAPmdVS8iV1LgsK1VW'
 
@@ -51,8 +53,8 @@ def getSongInfo(song: tuple, i):
                 lyrics = scrapeLyrics(song_page)
                 # popular_songs = getPopularSongs(artists[count])
                 
-                print(f"COUNT: {i}\nSong: {song[0]}, Artists: {song[1]}, Rank: {song[2]}, Year: {song[3]}")
-                print(f"", producers, "\n--------")
+                #print(f"COUNT: {i}\nSong: {song[0]}, Artists: {song[1]}, Rank: {song[2]}, Year: {song[3]}")
+                #print(f"", producers, "\n--------")
                 found_page = True
             break
         count += 1
@@ -71,7 +73,7 @@ def getProducers_and_ViewCount(api_path):
     
     producers = [producer['name'] for producer in json_res['response']['song']["producer_artists"]]
     view_count = json_res['response']['song']['stats']['pageviews']
-
+    
     return producers, view_count
 
 def scrapeLyrics(url):
@@ -132,27 +134,58 @@ def main():
     songs_artists_producers = defaultdict(set)
     
     # Shape is number of songs by number of metadata (6): Artists, Producers, Genius View Count, Lyrics, Year
-    songs_matrix = np.zeros((len(song_list), 6))
-    columns = ["Artists", "Producers", "Genius ViewCount", "Lyrics", "Song Rank", "Year"]
+    songs_matrix = [[0]*7]*len(song_list)
+    
     
     for i, song in enumerate(song_list):
         song_name, song_artists, song_rank, year = song
         producers, lyrics, view_count = getSongInfo(song, i)
         
         songs_artists_producers['songs'].add(song_name)
-
+        
         for artist in song_artists:
             songs_artists_producers['artists'].add(artist)
         for producer in producers:
             songs_artists_producers['producers'].add(producer)
         
-        songs_with_metadata.append((song_name, producers, view_count, lyrics, song_rank, year))
+        songs_with_metadata.append((song_name, song_artists, producers, view_count, lyrics, song_rank, year))
+    print(len(songs_with_metadata))
     
     # Sort the Song Names via songs_with_metadata
     # Sort the Artists, and Producers
     # Enumerate and make the index the ID Representation of the Song, replace artists and prducers w. IDS too
+    songs_with_metadata.sort(key = operator.itemgetter(0))
+    artists = list(songs_artists_producers['artists'])
+    artists.sort()
+    producers = list(songs_artists_producers['producers'])
+    producers.sort()
+    
+    # Set up ID's
+    id_to_artists_and_producers = defaultdict(dict)
+    id_to_artists_and_producers['artists'] = defaultdict(str)
+    id_to_artists_and_producers['producers'] = defaultdict(str)
     
     
+    artists_and_producers_to_id = defaultdict(dict)
+    artists_and_producers_to_id['artists'] = defaultdict(int)
+    artists_and_producers_to_id['producers'] = defaultdict(int)
+    
+    for i, artist in enumerate(artists):
+        id_to_artists_and_producers['artists'][i] = artist
+        artists_and_producers_to_id['artists'][artist] = i
+    
+    for i, producers in enumerate(producers):
+        id_to_artists_and_producers['producers'][i] = artist
+        artists_and_producers_to_id['producers'][artist] = i
+    
+    # Structure data into a np array and finally a Pandas Dataframe
+    for i, song in enumerate(songs_with_metadata):
+        for j, metadata in enumerate(song):
+            songs_matrix[i][j] = metadata
+    
+    df = pd.DataFrame(songs_matrix, columns = ['Song Title', "Artists", "Producers", "Genius ViewCount", "Lyrics", "Song Rank", "Year"]) 
+    df.to_csv('songs.csv')
+
     
 if __name__ == "__main__":
     main()
