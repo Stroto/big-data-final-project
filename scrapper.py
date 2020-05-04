@@ -19,7 +19,13 @@ import re
 from bs4 import BeautifulSoup
 from bs4 import element
 from collections import defaultdict
+import re
 
+def re_strip(string):
+    new_string = re.sub(r'^(\u200b)+', "", string)
+    new_string = re.sub(r'(\u200b)+$', "", new_string)
+
+    return new_string
 def getResponseSoup(url: str):
     
     res = requests.get(url)
@@ -54,6 +60,9 @@ def cleanSongArtistsTexts(artists_text):
     
     artists = re.split(r'\s*[,&)] | \s*Featuring\s* | \s*X\s*', artists_text)
     
+    artists = [re_strip(artist) for artist in artists]
+    artists = [re.sub(r'^(Featuring)+\s*', "", artist) for artist in artists]
+    
     return tuple(artists)
     
 
@@ -68,6 +77,8 @@ def getSongList(res, year):
         for song in section.find_all("div", class_ = "ye-chart-item__primary-row"):
             song_name = song.find("div", class_ = "ye-chart-item__title").text.strip()
             song_name = re.sub("\s*\((.)*\)\s*", "", song_name)
+            song_name = re_strip(song_name)
+            
             song_rank = int(song.find("div", class_ = "ye-chart-item__rank" ).text.strip())
             song_artists = song.find("div", class_ = "ye-chart-item__artist" ).text.strip()
             
